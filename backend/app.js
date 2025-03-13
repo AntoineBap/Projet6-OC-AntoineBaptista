@@ -10,13 +10,9 @@ app.use(express.json())
 app.use(bodyParser.json());
 
 mongoose
-  .connect(
-    "mongodb+srv://antoinebaptista030604:RROgpjipJzX0xR7M@clusterabm.e5rhi.mongodb.net/?retryWrites=true&w=majority&appName=ClusterABM",
-    { useNewUrlParser: true, useUnifiedTopology: true }
-  )
+  .connect(process.env.MONGO_URI, { useNewUrlParser: true, useUnifiedTopology: true })
   .then(() => console.log("Connexion à MongoDB réussie !"))
   .catch(() => console.log("Connexion à MongoDB échouée !"));
-  
 
 
 app.use((req, res, next) => {
