@@ -1,9 +1,23 @@
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
 const User = require('../models/User');
+const PasswordValidator = require('password-validator');
+
+const schema = new PasswordValidator();
+schema
+    .is().min(8)
+    .is().max(100)                              
+    .has().uppercase()                                                                                    
+    .has().not().spaces()                           
 
 exports.signup = async (req, res, next) => {
     try {
+        if (!schema.validate(req.body.password)) {
+            return res.status(400).json({ 
+                message: "Le mot de passe doit contenir au moins 8 caractères, une majuscule et ne doit pas contenir d'espaces." 
+            });
+        }
+
         const existingUser = await User.findOne({ email: req.body.email });
         if (existingUser) {
             return res.status(400).json({ message: "Cet email est déjà utilisé." });
@@ -16,11 +30,9 @@ exports.signup = async (req, res, next) => {
             password: hash,
         });
         await user.save();
-        console.log("[SIGNUP] Utilisateur créé:", user);
         
         return res.status(201).json({ message: 'Utilisateur créé avec succès !' });
     } catch (error) {
-        console.error("[SIGNUP] Erreur:", error);
         return res.status(500).json({ message: "Erreur serveur", error });
     }
 };
