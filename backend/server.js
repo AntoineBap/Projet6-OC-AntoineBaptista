@@ -46,7 +46,3 @@ server.on('listening', () => {
 });
 
 server.listen(port);
-<<<<<<< HEAD
-=======
-
->>>>>>> 7e984566ac66d695fff8ed43dee6b378f8b0d20b
