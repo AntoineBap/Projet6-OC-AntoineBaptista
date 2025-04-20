@@ -1,6 +1,5 @@
 const Book = require("../models/Book");
 const fs = require('fs');
-const axios = require('axios');
 
 exports.getAllBooks = (req, res, next) => {
   Book.find()
