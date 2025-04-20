@@ -1,7 +1,8 @@
 const http = require('http');
-const app = require('./app'); 
+const app = require('./app');
 const cors = require('cors');
-require('dotenv').config(); 
+require('dotenv').config();
+
 
 app.use(cors());
 
@@ -12,9 +13,8 @@ const normalizePort = val => {
   return false;
 };
 
-const port = normalizePort(process.env.PORT || '3000'); 
+const port = normalizePort(process.env.PORT || '3000');
 app.set('port', port);
-
 
 const errorHandler = error => {
   if (error.syscall !== 'listen') {
