@@ -1,41 +1,82 @@
 const multer = require('multer');
 const sharp = require('sharp');
-const path = require('path');
-const fs = require('fs');
+const { Readable } = require('stream');
+const cloudinary = require('./cloudinary-config');
 
-const storage = multer.memoryStorage(); // Stocke l'image en mémoire temporairement
+const storage = multer.memoryStorage();
 
 const upload = multer({
   storage,
-  limits: { fileSize: 2 * 1024 * 1024 }, // limite d'upload de 2 Mo
-  fileFilter: (req, file, callback) => {
+  limits: { fileSize: 2 * 1024 * 1024 }, // 2MB
+  fileFilter: (req, file, cb) => {
     const allowedMimeTypes = ['image/jpeg', 'image/jpg', 'image/png'];
     if (!allowedMimeTypes.includes(file.mimetype)) {
-      return callback(new Error('Format d’image non supporté'), false);
+      return cb(new Error('Format d’image non supporté'), false);
     }
-    callback(null, true);
+    cb(null, true);
   },
 }).single('image');
 
-const processImage = async (req, res, next) => {
-  if (!req.file) {
-    return next();
-  }
+const uploadToCloudinary = async (buffer) => {
+  const resizedBuffer = await sharp(buffer)
+    .resize(800)
+    .webp({ quality: 80 })
+    .toBuffer();
 
-  const filename = `${Date.now()}-${Math.round(Math.random() * 1e9)}.webp`; //change le nom de la file
-  const outputPath = path.join('images', filename);
+  const stream = cloudinary.uploader.upload_stream({
+    folder: 'book_images', // optionnel : crée un dossier dans Cloudinary
+    resource_type: 'image',
+    format: 'webp'
+  }, (error, result) => {
+    if (error) throw error;
+    return result;
+  });
+
+  const readable = new Readable();
+  readable._read = () => {};
+  readable.push(resizedBuffer);
+  readable.push(null);
+  readable.pipe(stream);
+
+  return new Promise((resolve, reject) => {
+    stream.on('finish', () => resolve(stream));
+    stream.on('error', reject);
+  });
+};
+
+const processImage = async (req, res, next) => {
+  if (!req.file) return next();
 
   try {
-    await sharp(req.file.buffer)
-      .resize(800) // redimensionne a 800px
-      .toFormat('webp', { quality: 80 }) // convertit en webp
-      .toFile(outputPath);
+    const result = await new Promise((resolve, reject) => {
+      const stream = cloudinary.uploader.upload_stream(
+        {
+          folder: 'book_images',
+          format: 'webp',
+        },
+        (error, result) => {
+          if (error) return reject(error);
+          resolve(result);
+        }
+      );
 
-    req.file.filename = filename; // met a jour le nom du fichier
-    req.file.path = outputPath;
+      sharp(req.file.buffer)
+        .resize(800)
+        .webp({ quality: 80 })
+        .toBuffer()
+        .then((data) => {
+          const readable = new Readable();
+          readable._read = () => {};
+          readable.push(data);
+          readable.push(null);
+          readable.pipe(stream);
+        });
+    });
+
+    req.file.cloudinaryUrl = result.secure_url;
     next();
   } catch (error) {
-    console.error('Erreur lors de la conversion de l’image :', error);
+    console.error('Erreur Cloudinary :', error);
     res.status(500).json({ message: 'Erreur lors du traitement de l’image' });
   }
 };
