@@ -13,18 +13,24 @@ exports.getOneBook = (req, res, next) => {
     .catch((error) => res.status(400).json({ error }));
 };
 
-exports.createBook = (req, res, next) => {
-  const bookObject = JSON.parse(req.body.book);
-  delete bookObject._userId;
-  const book = new Book({
-    ...bookObject, 
-    userId: req.auth.userId,
-    imageUrl: `https://projet6-oc-antoinebaptista.onrender.com/images/${req.file.filename}`,
-  })
-  book.save()
-    .then((savedBook) => { res.status(201).json({savedBook})})
-    .catch(error => { res.status(400).json( { error })})
+exports.createBook = async (req, res) => {
+  try {
+    const bookObject = JSON.parse(req.body.book);
+
+    const newBook = new Book({
+      ...bookObject,
+      imageUrl: req.file.cloudinaryUrl,
+      averageRating: bookObject.ratings?.[0]?.grade || 0,
+    });
+
+    await newBook.save();
+    res.status(201).json({ message: 'Livre enregistré !' });
+  } catch (error) {
+    console.error('Erreur createBook :', error);
+    res.status(400).json({ error: 'Erreur lors de la création du livre' });
+  }
 };
+
 
 exports.modifyBook = (req, res, next) => {
   Book.updateOne({ _id: req.params.id }, { ...req.body, _id: req.params.id })
